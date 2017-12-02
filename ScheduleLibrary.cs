@@ -26,7 +26,7 @@ namespace TotalBathhouseOverhaul
 
             Dictionary<string, string> assetData = (Dictionary<string, string>)asset.AsDictionary<string, string>().Data;
 
-            if (!this.CharacterSchedules.ContainsKey(scheduleCharacter))
+            if (!ScheduleLibrary.instance.CharacterSchedules.ContainsKey(scheduleCharacter))
             {
                 ScheduleLibrary.Initialize(scheduleCharacter, assetData);
             }
@@ -48,47 +48,24 @@ namespace TotalBathhouseOverhaul
 
         public static Dictionary<string, string> Compress (string characterName)
         {   
-            //the inverse of whether to concatenate the next schedule item with a forward slash.
-            bool firstSchedule = true;
-
             Dictionary<string, string> compressedDictionary = new Dictionary<string, string>();
 
             foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, string>>> characterScheduleRow in instance.CharacterSchedules[characterName])
             {
                 //the string value for this schedule item
                 string compressedSchedule = string.Empty;
-
-                //if this is the second or greater schedule, concatenate it to the rest of the data with a forward slash.
-                if (firstSchedule)
-                {
-                    firstSchedule = false;
-                } else {
-                    compressedSchedule = $"{compressedSchedule}/";
-                }
-
+                
                 //the keyname of this schedule item, this is the weird unique one that can be things like [season], [day], [hearts], etc.
                 string scheduleKey = characterScheduleRow.Key;
-
-                //the control bool for whether to add a space before the time row
-                bool firstTimeSlot = true;
 
                 //this is the values contained for that particular schedule key table.
                 Dictionary<string, Dictionary<string, string>> characterScheduleTimeRows = characterScheduleRow.Value;
                 foreach (KeyValuePair<string, Dictionary<string, string>> characterScheduleTimeRow in characterScheduleTimeRows)
                 {
-                    if (firstTimeSlot)
-                    {
-                        firstTimeSlot = false;
-                    } else
-                    {
-                        compressedSchedule = $"{compressedSchedule} ";
-                    }
+                    string timeSlot = string.Empty;
 
                     //the time key for this schedule
                     string timeKey = characterScheduleTimeRow.Key;
-
-                    //start by concatenating the time key to the current compressed schedule.
-                    compressedSchedule = $"{compressedSchedule}{timeKey}";
 
                     //handle the guts of the schedule, depending on what sort of time key we're dealing with.
                     if (timeKey.Equals("GOTO"))
@@ -102,7 +79,7 @@ namespace TotalBathhouseOverhaul
                                 break;
                             }
                         }
-                        compressedSchedule = $"{compressedSchedule} {gotoLabel}";
+                        timeSlot = $"{timeKey} {gotoLabel}";
                     } else if (timeKey.Equals("NOT friendship"))
                     {
                         string notFriendshipWithWhoAndHowMuch = string.Empty;
@@ -111,7 +88,7 @@ namespace TotalBathhouseOverhaul
                             notFriendshipWithWhoAndHowMuch = $"{notFriendshipWithKeyValuePair.Key} {notFriendshipWithKeyValuePair.Value}";
                             break;                         
                         }
-                        compressedSchedule = $"{compressedSchedule} {notFriendshipWithWhoAndHowMuch}";
+                        timeSlot = $"{timeKey} {notFriendshipWithWhoAndHowMuch}";
                     } else
                     {
                         //holds the full diretive for this time slot.
@@ -142,24 +119,36 @@ namespace TotalBathhouseOverhaul
                                     }
                                     break;
                                 default:
-                                    concatenatedDirective = $"{concatenatedDirective} {timeDirective.Value}";
+                                    if (concatenatedDirective == string.Empty)
+                                    {
+                                        concatenatedDirective = timeDirective.Value;
+                                    } else
+                                    {
+                                        concatenatedDirective = $"{concatenatedDirective} {timeDirective.Value}";
+                                    }                                    
                                     break;
                             }
                         }
 
-                        compressedSchedule = $"{compressedSchedule} {concatenatedDirective}";
+                        timeSlot = $"{timeKey} {concatenatedDirective}";
                     }
 
-                    //reset the first time slot flag so the next one behaves
-                    firstTimeSlot = true;
+                    if (compressedSchedule.Equals(string.Empty))
+                    {
+                        compressedSchedule = timeSlot;
+                    } else
+                    {
+                        compressedSchedule = string.Join(@"/", compressedSchedule, timeSlot);
+                    }
                 }
 
-                //reset the first schedule flag so the next one behaves
-                firstSchedule = true;
+                //add this schedule entry and key to the dictionary.
+                compressedDictionary.Add(scheduleKey, compressedSchedule);
             }
 
             //pass back the compressed schedule dictionary
-            return compressedDictionary;            
+            return compressedDictionary;
+
         }
 
         internal static void WriteFile(IModHelper helper)
@@ -203,7 +192,7 @@ namespace TotalBathhouseOverhaul
                         string adjustedScheduleTimeRow = scheduleTimeRow;
 
                         //dialog pattern for stripping dialog out of [and back into] the schedule library
-                        string dialogPattern = @"\"".*\""";
+                        string dialogPattern = @""".*""";
 
                         //check to see if we found dialog
                         Match dialogRegexMatch = Regex.Match(scheduleTimeRow, dialogPattern);
