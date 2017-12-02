@@ -37,7 +37,10 @@ namespace TotalBathhouseOverhaul
 
         private void ControlEvents_KeyPressed(object sender, EventArgsKeyPressed e)
         {
-            if (e.KeyPressed.Equals(Keys.F3))
+            if (!Context.IsWorldReady)
+                return;
+
+            if (e.KeyPressed.Equals(Keys.F7))
                 Game1.warpFarmer("TotalBathhouseOverhaul", 27, 30, false);
         }
 
