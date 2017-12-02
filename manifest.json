@@ -1,0 +1,10 @@
+﻿{
+   "Name": "TotalBathhouseOverhaul",
+   "Author": "PrismuthAndFriends",
+   "Version": "0.1",
+   "MinimumApiVersion": "2.0",
+   "Description": "Make the bathhouse into something special.",
+   "UniqueID": "Prismuth.TotalBathhouseOverhaul",
+   "EntryDll": "TotalBathhouseOverhaul.dll",
+   "_commentedOut_UpdateKeys_Secretly_EE_For_Now_": [ "Nexus:1656" ]
+}
