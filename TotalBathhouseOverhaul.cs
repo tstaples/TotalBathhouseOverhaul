@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using xTile;
 using xTile.Tiles;
+using Microsoft.Xna.Framework.Graphics;
+using System;
+using Microsoft.Xna.Framework;
 
 namespace TotalBathhouseOverhaul
 {
@@ -54,27 +57,47 @@ namespace TotalBathhouseOverhaul
             GameLocation location = new GameLocation(map, "TotalBathhouseOverhaul") { IsOutdoors = false, IsFarm = false };
             Game1.locations.Add(location);
 
-            LoadBathhouseTilesheet();
+            //apparently this does things
+            if (location.map.Properties.ContainsKey("DayTiles"))
+                location.map.Properties.Remove("DayTiles");
+
+            //apparently this does things too.
+            if (location.map.Properties.ContainsKey("NightTiles"))
+                location.map.Properties.Remove("NightTiles");
+
+            LoadBathhouseTilesheet(location);
+
+            //from Ento, no clue why this works. My life is a mess.
+            location.map = map;
+
+            //more ento hax
+            location.ignoreLights = true;
         }
 
-        private void LoadBathhouseTilesheet()
+        private void LoadBathhouseTilesheet(GameLocation location)
         {
             // This gets the asset key for a tilesheet.png file from your mod's folder. You can also load a game tilesheet like
             // this: helper.Content.GetActualAssetKey("spring_town", ContentSource.GameContent).
             string tilesheetPath = helper.Content.GetActualAssetKey("ztotalbathhouseoverhaul_tiles.png", ContentSource.ModFolder);
-
-            // Get an instance of the in-game location you want to patch. For the farm, use Game1.getFarm() instead.
-            GameLocation location = Game1.getLocationFromName("TotalBathhouseOverhaul");
+            string tilesheetSteamPath = helper.Content.GetActualAssetKey("ztotalbathhouseoverhaul_steam.png", ContentSource.ModFolder);
 
             // Add the tilesheet.
-            TileSheet tilesheet = new TileSheet(
+            TileSheet bathhouseTilesheet = new TileSheet(
                id: "tbo-spritesheet", // a unique ID for the tilesheet
                map: location.map,
                imageSource: tilesheetPath,
-               sheetSize: new xTile.Dimensions.Size(240, 432), // the pixel size of your tilesheet image.
+               sheetSize: new xTile.Dimensions.Size(15, 27), // the pixel size of your tilesheet image.
                tileSize: new xTile.Dimensions.Size(16, 16) // should always be 16x16 for maps
             );
-            location.map.AddTileSheet(tilesheet);
+            TileSheet steamTilesheet = new TileSheet(
+               id: "tbo-steam-spritesheet", // a unique ID for the tilesheet
+               map: location.map,
+               imageSource: tilesheetSteamPath,
+               sheetSize: new xTile.Dimensions.Size(15, 27), // the pixel size of your tilesheet image.
+               tileSize: new xTile.Dimensions.Size(16, 16) // should always be 16x16 for maps
+            );
+            location.map.AddTileSheet(bathhouseTilesheet);
+            location.map.AddTileSheet(steamTilesheet);
             location.map.LoadTileSheets(Game1.mapDisplayDevice);
         }
     }
