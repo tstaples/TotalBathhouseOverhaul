@@ -41,6 +41,9 @@ namespace TotalBathhouseOverhaul
         //(40, 20) [37]
         //(15-39, 20) [36] walls
 
+        //todo turn this https://pastebin.com/EVFNqzAE
+        //into clean loops
+
         public static TotalBathhouseOverhaul instance;
 
         public IModHelper helper;
