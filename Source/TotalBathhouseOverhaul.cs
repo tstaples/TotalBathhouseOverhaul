@@ -195,6 +195,12 @@ namespace TotalBathhouseOverhaul
                     string[] args = new string[split.Length - 1];
                     Array.Copy(split, 1, args, 0, args.Length);
                     this.actionInfo = new Tuple<StardewValley.Farmer, string, string[], Vector2>(Game1.player, split[0], args, grabTile);
+
+                    string messageKey = ParseCustomMessage(this.actionInfo.Item2, args);
+                    if (messageKey != null)
+                    {
+                        HandleCustomMessage(messageKey);
+                    }
                 }
             }
         }
@@ -211,6 +217,25 @@ namespace TotalBathhouseOverhaul
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
         {
             LoadBathhouseMap();
+        }
+
+        private string ParseCustomMessage(string actionType, string[] args)
+        {
+            if (actionType == "Message" && args.Length == 1)
+            {
+                string messageKey = args[0].Trim('"');
+                return messageKey;
+            }
+            return null;
+        }
+
+        private void HandleCustomMessage(string messageKey)
+        {
+            Translation translation = this.Helper.Translation.Get(messageKey);
+            if (translation.HasValue())
+            {
+                Game1.drawObjectDialogue(translation);
+            }
         }
 
         private void LoadBathhouseMap()
