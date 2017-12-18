@@ -43,9 +43,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CustomBathhouse.cs" />
-    <Compile Include="ScheduleLibrary.cs" />
-    <Compile Include="TotalBathhouseOverhaul.cs" />
+    <Compile Include="Source\CustomBathhouse.cs" />
+    <Compile Include="Source\ScheduleLibrary.cs" />
+    <Compile Include="Source\TotalBathhouseOverhaul.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
