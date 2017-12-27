@@ -22,8 +22,9 @@ namespace TotalBathhouseOverhaul
         public static Point maleLockerLocation = new Point(47, 16);
 
         //names of things that we need
-        private const string bathhouseLocationFilename = "TotalBathHouseOverhaul.tbin";
-        private const string steamSpriteSheetFilename = "ztotalbathhouseoverhaul_steam.png";
+        private const string assetsRoot = "Assets";
+        private string bathhouseLocationFilename => Path.Combine(assetsRoot, "TotalBathHouseOverhaul.tbin");
+        private string steamSpriteSheetFilename => Path.Combine(assetsRoot, "ztotalbathhouseoverhaul_steam.png");
 
         //note wall locations if needed
         //(14, 0) [5]
