@@ -16,11 +16,6 @@ namespace TotalBathhouseOverhaul
 {
     public class TotalBathhouseOverhaul : Mod
     {
-        //note locker locations female and male, respectively:
-        //(7, 16) and (47, 16).
-        public static Point femaleLockerLocation = new Point(7, 16);
-        public static Point maleLockerLocation = new Point(47, 16);
-
         //names of things that we need
         private const string assetsRoot = "Assets";
         private string bathhouseLocationFilename => Path.Combine(assetsRoot, "TotalBathHouseOverhaul.tbin");
@@ -160,21 +155,9 @@ namespace TotalBathhouseOverhaul
             if (location.map.Properties.ContainsKey("DayTiles"))
                 location.map.Properties.Remove("DayTiles");
 
-
-
             //apparently this does things too.
             if (location.map.Properties.ContainsKey("NightTiles"))
                 location.map.Properties.Remove("NightTiles");
-
-            //add actionable locker properties for changing clothes
-            Tile maleLockerTile = location.map.GetLayer("Buildings").PickTile(new xTile.Dimensions.Location((int)maleLockerLocation.X * Game1.tileSize, (int)maleLockerLocation.Y * Game1.tileSize), Game1.viewport.Size);
-            Tile femaleLockerTile = location.map.GetLayer("Buildings").PickTile(new xTile.Dimensions.Location((int)femaleLockerLocation.X * Game1.tileSize, (int)femaleLockerLocation.Y * Game1.tileSize), Game1.viewport.Size);
-
-            foreach (Tile tile in new Tile[] { maleLockerTile, femaleLockerTile })
-            {
-                //if (Game1.player.isMale) //we're not gender sensitive, are we?
-                tile.Properties.Add("Action", "ChangeClothes");
-            }
 
             //LoadBathhouseTilesheet(location);
 
