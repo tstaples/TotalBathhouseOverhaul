@@ -3,6 +3,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using xTile;
 using xTile.Tiles;
@@ -77,6 +78,7 @@ namespace TotalBathhouseOverhaul
 
             //we have to shred the custom bathhouse location before save or it will fail serialization
             SaveEvents.BeforeSave += SaveEvents_BeforeSave;
+            SaveEvents.AfterReturnToTitle += SaveEvents_BeforeSave;
 
             //then load it back after serialization failure is avoided
             SaveEvents.AfterSave += SaveEvents_AfterSave;
@@ -141,8 +143,8 @@ namespace TotalBathhouseOverhaul
             Map map = helper.Content.Load<Map>(bathhouseLocationFilename);
 
             //ento's hax require some custom manipulation of the always-front later
-            map.RemoveLayer(map.GetLayer("AlwaysFront"));
-
+            if (map.Layers.Contains(map.GetLayer("AlwaysFront")))
+                map.RemoveLayer(map.GetLayer("AlwaysFront"));
 
             Texture2D steamTexture = this.Helper.Content.Load<Texture2D>(steamSpriteSheetFilename);
 
