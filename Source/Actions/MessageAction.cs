@@ -11,25 +11,18 @@ namespace TotalBathhouseOverhaul
     /// </summary>
     internal class MessageAction : TileAction
     {
-        protected override string ActionName => "Message";
+        protected override string CommandName => "Message";
+        protected override int MinimumArgs => 1;
 
-        private string MessageKey;
+        private string MessageKey => this.Args[0];
 
         // Format is: Message "MessageKey"
-        public override bool Parse(PropertyValue property)
+        protected override string ProcessArgument(string argument, int index)
         {
-            if (!base.Parse(property))
-                return false;
-
-            if (Args.Length > 0)
-            {
-                this.MessageKey = Args[0].Trim('"');
-                return true;
-            }
-            return false;
+            return argument.Trim('"');
         }
 
-        public override void Execute(IModHelper helper, IMonitor monitor)
+        protected override void Execute(IModHelper helper, IMonitor monitor)
         {
             if (this.MessageKey != null)
             {

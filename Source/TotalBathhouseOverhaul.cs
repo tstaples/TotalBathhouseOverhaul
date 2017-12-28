@@ -95,10 +95,9 @@ namespace TotalBathhouseOverhaul
             // TODO: remove ControllerA check once IsActionButton works for gamepads.
             if (e.IsActionButton || e.Button == SButton.ControllerA)
             {
-                bool isGamepad = (int)e.Button > 2000;
-                this.CurrentInputContext = isGamepad 
-                    ? (IInputContext)GamepadInputContext.DefaultContext 
-                    : MouseInputContext.DefaultContext;
+                const int controllerOffset = 2000;
+                bool isGamepad = (int)e.Button > controllerOffset;
+                this.CurrentInputContext = isGamepad ? (IInputContext)GamepadInputContext.DefaultContext : MouseInputContext.DefaultContext;
                 this.CurrentInputContext.CursorPosition = e.Cursor;
 
                 if (this.ActionManager.CanCheckForAction())

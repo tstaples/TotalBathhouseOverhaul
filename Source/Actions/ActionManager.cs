@@ -67,12 +67,9 @@ namespace TotalBathhouseOverhaul
                 // where the key corredponds with the tile property key (ie. action).
                 foreach (ITileProperty tileProperty in this.TileProperties)
                 {
-                    if (tileProperty.PropertyType.ToString() != pair.Key)
-                        continue;
-
-                    if (tileProperty.Parse(pair.Value))
+                    if (tileProperty.PropertyType.ToString() == pair.Key)
                     {
-                        tileProperty.Execute(this.Helper, this.Monitor);
+                        tileProperty.RunOnProperty(pair.Value, this.Helper, this.Monitor);
                     }
                 }
             }

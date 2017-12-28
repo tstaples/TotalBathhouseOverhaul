@@ -7,9 +7,10 @@ namespace TotalBathhouseOverhaul
     /// <summary>Toggles the player's bathing suit on/off.</summary>
     internal class ChangeClothesAction : TileAction
     {
-        protected override string ActionName => "ChangeClothes";
+        protected override string CommandName => "ChangeClothes";
+        protected override int MinimumArgs => 0;
 
-        public override void Execute(IModHelper helper, IMonitor monitor)
+        protected override void Execute(IModHelper helper, IMonitor monitor)
         {
             Game1.globalFadeToBlack(() =>
             {

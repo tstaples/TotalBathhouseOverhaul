@@ -17,12 +17,7 @@ namespace TotalBathhouseOverhaul
         /// <summary>The property type.</summary>
         TilePropertyType PropertyType { get; }
 
-        /// <summary>Parses the data set on the tile and verifies if this property should be run.</summary>
-        /// <param name="property">The property to parse.</param>
-        /// <returns>True if this property should be executed.</returns>
-        bool Parse(PropertyValue property);
-
         /// <summary>Runs the logic for this property.</summary>
-        void Execute(IModHelper helper, IMonitor monitor);
+        void RunOnProperty(PropertyValue property, IModHelper helper, IMonitor monitor);
     }
 }

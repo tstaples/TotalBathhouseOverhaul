@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Source\Actions\ActionManager.cs" />
     <Compile Include="Source\Actions\ChangeClothesAction.cs" />
+    <Compile Include="Source\Actions\TileProperty.cs" />
     <Compile Include="Source\InputContexts\GamepadInputContext.cs" />
     <Compile Include="Source\InputContexts\IInputContext.cs" />
     <Compile Include="Source\Actions\ITileProperty.cs" />
