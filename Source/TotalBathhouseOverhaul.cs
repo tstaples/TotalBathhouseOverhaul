@@ -26,6 +26,9 @@ namespace TotalBathhouseOverhaul
         private string bathhouseLocationFilename => Path.Combine(assetsRoot, "TotalBathHouseOverhaul.tbin");
         private string steamSpriteSheetFilename => Path.Combine(assetsRoot, "ztotalbathhouseoverhaul_steam.png");
 
+        private ActionManager ActionManager;
+        private IInputContext CurrentInputContext;
+
         //note wall locations if needed
         //(14, 0) [5]
         //(15-39, 0) [6]
@@ -42,7 +45,7 @@ namespace TotalBathhouseOverhaul
         //(40, 20) [37]
         //(15-39, 20) [36] walls
 
-        //todo turn this https://pastebin.com/EVFNqzAE
+        //todo turn this https://pastebin.com/X3v736BV
         //into clean loops
 
         public static TotalBathhouseOverhaul instance;
@@ -60,22 +63,19 @@ namespace TotalBathhouseOverhaul
 
             //try to initialize the character schedules library.
             ScheduleLibrary.Initialize(instance.helper);
-            
+
+            this.CurrentInputContext = MouseInputContext.DefaultContext;
+            this.ActionManager = new ActionManager(this.Helper, this.Monitor);
+            this.ActionManager.AddTileProperty(new ChangeClothesAction());
+            this.ActionManager.AddTileProperty(new MessageAction());
+
             //wire up various events
             AddEventHandlers();
         }
 
         private void AddEventHandlers()
         {
-            //hook up a keybind to warp to the map
-            ControlEvents.KeyPressed += ControlEvents_KeyPressed;
-
-            //handle controller key presses and releases
-            ControlEvents.ControllerButtonPressed += this.ControlEvents_ControllerButtonPressed;
-            ControlEvents.ControllerButtonReleased += this.ControlEvents_ControllerButtonReleased;
-
-            //handle mouse state changes [press/release]
-            ControlEvents.MouseChanged += this.ControlEvents_MouseChanged;
+            InputEvents.ButtonPressed += InputEvents_ButtonPressed;
 
             //load the game locations
             SaveEvents.AfterLoad += SaveEvents_AfterLoad;
@@ -85,6 +85,31 @@ namespace TotalBathhouseOverhaul
 
             //then load it back after serialization failure is avoided
             SaveEvents.AfterSave += SaveEvents_AfterSave;
+        }
+
+        private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
+        {
+            if (!Context.IsWorldReady)
+                return;
+
+            // TODO: remove ControllerA check once IsActionButton works for gamepads.
+            if (e.IsActionButton || e.Button == SButton.ControllerA)
+            {
+                bool isGamepad = (int)e.Button > 2000;
+                this.CurrentInputContext = isGamepad 
+                    ? (IInputContext)GamepadInputContext.DefaultContext 
+                    : MouseInputContext.DefaultContext;
+                this.CurrentInputContext.CursorPosition = e.Cursor;
+
+                if (this.ActionManager.CanCheckForAction())
+                {
+                    this.ActionManager.CheckForAction(this.CurrentInputContext);
+                }
+            }
+            else if (e.Button.Equals(SButton.F7))
+            {
+                Game1.warpFarmer("CustomBathhouse", 27, 30, false);
+            }
         }
 
         private void SaveEvents_AfterSave(object sender, EventArgs e)
@@ -106,136 +131,10 @@ namespace TotalBathhouseOverhaul
             //figure out where the cursor position should be, relative to the player.
             return new Point((int)Math.Round((mouseX + Game1.player.getStandingX() - (Game1.tileSize / 2)) / Game1.tileSize), (int)Math.Round((mouseY + Game1.player.getStandingY() - (Game1.tileSize / 2)) / Game1.tileSize));
         }
-        
-        //ripped out of Entoarox's framework, this is how he handles Actionable tiles in a controller-friendly way
-        private void ControlEvents_ControllerButtonPressed(object sender, EventArgsControllerButtonPressed e)
-        {
-            if (e.ButtonPressed == Buttons.A)
-                CheckForAction();
-        }
-
-        private void ControlEvents_ControllerButtonReleased(object sender, EventArgsControllerButtonReleased e)
-        {
-            if (this.actionInfo != null && e.ButtonReleased == Buttons.A)
-            {
-                FireActionTriggered(this.actionInfo);
-                this.actionInfo = null;
-            }
-        }
-
-        private void ControlEvents_MouseChanged(object sender, EventArgsMouseStateChanged e)
-        {
-            if (e.NewState.RightButton == ButtonState.Pressed && e.PriorState.RightButton != ButtonState.Pressed)
-                CheckForAction();
-            if (this.actionInfo != null && e.NewState.RightButton == ButtonState.Released)
-            {
-                FireActionTriggered(this.actionInfo);
-                this.actionInfo = null;
-            }
-        }
-
-        private void FireActionTriggered(Tuple<StardewValley.Farmer, string, string[], Vector2> actionInfo)
-        {
-            if (actionInfo != null)
-                FireActionTriggered(actionInfo.Item1, actionInfo.Item2, actionInfo.Item3, actionInfo.Item4);
-        }
-
-        private void FireActionTriggered(StardewValley.Farmer player, string property, string[] args, Vector2 tilePosition)
-        {
-            if (!string.IsNullOrEmpty(property))
-            {
-                switch (property)
-                {
-                    //de facto change clothes event for the mod, it's all we care about handling at the time of writing.
-                    case "ChangeClothes":
-                        InitiateChangeClothesFadeout();
-                        break;
-                }
-            }
-        }
-
-        //private bool isChangingClothes = false;
-        //private bool hadSwimClothes = false;
-
-        private static void SwitchBathingClothesAndClearFade()
-        {
-            if (Game1.player.bathingClothes)
-            {
-                Game1.player.changeOutOfSwimSuit();
-            } else
-            {
-                Game1.player.changeIntoSwimsuit();
-            }
-            Game1.globalFadeToClear(null);
-        }
-
-        private void InitiateChangeClothesFadeout()
-        {
-            Game1.afterFadeFunction changeClothesDelegate = new Game1.afterFadeFunction(SwitchBathingClothesAndClearFade);
-            Game1.globalFadeToBlack(changeClothesDelegate);
-        }
-
-        private Tuple<StardewValley.Farmer, string, string[], Vector2> actionInfo;
-
-        //almost verbatim a rip from Ento's core, only the event args are replaced with a tuple because I'm not looking to add hookable events. I just want explicit handling.
-        private void CheckForAction()
-        {
-            if (Game1.activeClickableMenu == null && !Game1.player.UsingTool && !Game1.pickingTool && !Game1.menuUp && (!Game1.eventUp || Game1.currentLocation.currentEvent.playerControlSequence) && !Game1.nameSelectUp && Game1.numberOfSelectedItems == -1 && !Game1.fadeToBlack)
-            {                
-                Vector2 grabTile = new Vector2((Game1.getOldMouseX() + Game1.viewport.X), (Game1.getOldMouseY() + Game1.viewport.Y)) / Game1.tileSize;
-                if (!Utility.tileWithinRadiusOfPlayer((int)grabTile.X, (int)grabTile.Y, 1, Game1.player))
-                    grabTile = Game1.player.GetGrabTile();
-                Tile tile = Game1.currentLocation.map.GetLayer("Buildings").PickTile(new xTile.Dimensions.Location((int)grabTile.X * Game1.tileSize, (int)grabTile.Y * Game1.tileSize), Game1.viewport.Size);
-                PropertyValue propertyValue = null;
-                if (tile != null)
-                    tile.Properties.TryGetValue("Action", out propertyValue);
-                if (propertyValue != null)
-                {
-                    string[] split = ((string)propertyValue).Split(' ');
-                    string[] args = new string[split.Length - 1];
-                    Array.Copy(split, 1, args, 0, args.Length);
-                    this.actionInfo = new Tuple<StardewValley.Farmer, string, string[], Vector2>(Game1.player, split[0], args, grabTile);
-
-                    string messageKey = ParseCustomMessage(this.actionInfo.Item2, args);
-                    if (messageKey != null)
-                    {
-                        HandleCustomMessage(messageKey);
-                    }
-                }
-            }
-        }
-
-        private void ControlEvents_KeyPressed(object sender, EventArgsKeyPressed e)
-        {
-            if (!Context.IsWorldReady)
-                return;
-
-            if (e.KeyPressed.Equals(Keys.F7))
-                Game1.warpFarmer("CustomBathhouse", 27, 30, false);
-        }
 
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
         {
             LoadBathhouseMap();
-        }
-
-        private string ParseCustomMessage(string actionType, string[] args)
-        {
-            if (actionType == "Message" && args.Length == 1)
-            {
-                string messageKey = args[0].Trim('"');
-                return messageKey;
-            }
-            return null;
-        }
-
-        private void HandleCustomMessage(string messageKey)
-        {
-            Translation translation = this.Helper.Translation.Get(messageKey);
-            if (translation.HasValue())
-            {
-                Game1.drawObjectDialogue(translation);
-            }
         }
 
         private void LoadBathhouseMap()

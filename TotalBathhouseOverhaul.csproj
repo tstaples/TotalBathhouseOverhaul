@@ -43,6 +43,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Source\Actions\ActionManager.cs" />
+    <Compile Include="Source\Actions\ChangeClothesAction.cs" />
+    <Compile Include="Source\InputContexts\GamepadInputContext.cs" />
+    <Compile Include="Source\InputContexts\IInputContext.cs" />
+    <Compile Include="Source\Actions\ITileProperty.cs" />
+    <Compile Include="Source\Actions\MessageAction.cs" />
+    <Compile Include="Source\InputContexts\MouseInputContext.cs" />
+    <Compile Include="Source\Actions\TileAction.cs" />
     <Compile Include="Source\CustomBathhouse.cs" />
     <Compile Include="Source\ScheduleLibrary.cs" />
     <Compile Include="Source\TotalBathhouseOverhaul.cs" />
