@@ -21,6 +21,7 @@ namespace TotalBathhouseOverhaul
         private IModHelper Helper;
 
         private string tilesheetID = "ztotalbathhouseoverhaulexterior";
+        private string TilesheetPath => Path.Combine(TotalBathhouseOverhaul.AssetsRoot, $"zpathtotalbathhouseoverhaulexterior_{Game1.currentSeason}.png");
 
         public RailroadPatcher(IMonitor monitor, IModHelper helper)
         {
@@ -66,10 +67,9 @@ namespace TotalBathhouseOverhaul
         // Load and add initial tile sheet
         private void AddTileSheet()
         {
-            string tileSheetPath = Path.Combine("assets", $"zpathtotalbathhouseoverhaulexterior_{Game1.currentSeason}.png");
             try
             {
-                this.Helper.Content.Load<Texture2D>(tileSheetPath);
+                this.Helper.Content.Load<Texture2D>(this.TilesheetPath);
             }
             catch (Exception ex)
             {
@@ -85,7 +85,7 @@ namespace TotalBathhouseOverhaul
             TileSheet ts = new TileSheet(
                id: tilesheetID, // a unique ID for the tilesheet
                map: railroad.map,
-               imageSource: this.Helper.Content.GetActualAssetKey(tileSheetPath),
+               imageSource: this.Helper.Content.GetActualAssetKey(this.TilesheetPath),
                sheetSize: new Size(15, 14), // the size of your tilesheet image (number of columns, number of rows).
                tileSize: new Size(16, 16) // should always be 16x16 for maps
             );
@@ -321,11 +321,9 @@ namespace TotalBathhouseOverhaul
         // Load new tilesheet texture and set it to current tilesheet's image source
         private void updateTileSheetForSeason(GameLocation railroad)
         {
-            string tileSheetPath = $"zpathtotalbathhouseoverhaulexterior_{Game1.currentSeason}.png";
-
             try
             {
-                this.Helper.Content.Load<Texture2D>(tileSheetPath);
+                this.Helper.Content.Load<Texture2D>(this.TilesheetPath);
             }
             catch (Exception ex)
             {
@@ -334,7 +332,7 @@ namespace TotalBathhouseOverhaul
                 throw new FailedToLoadTilesheetException();
             }
 
-            railroad.map.GetTileSheet(tilesheetID).ImageSource = $"{this.Helper.Content.GetActualAssetKey(tileSheetPath)}";
+            railroad.map.GetTileSheet(tilesheetID).ImageSource = $"{this.Helper.Content.GetActualAssetKey(this.TilesheetPath)}";
         }
     }
 }

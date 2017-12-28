@@ -1,50 +1,36 @@
-﻿using Microsoft.Xna.Framework.Input;
-using StardewModdingAPI;
+﻿using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 using xTile;
-using xTile.Tiles;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-using Microsoft.Xna.Framework;
-using xTile.ObjectModel;
-using StardewValley.BellsAndWhistles;
-using xTile.Dimensions;
-using xTile.Layers;
 
 
 namespace TotalBathhouseOverhaul
 {
     public class TotalBathhouseOverhaul : Mod
     {
-        //names of things that we need
-        private const string assetsRoot = "Assets";
-        private string bathhouseLocationFilename => Path.Combine(assetsRoot, "TotalBathHouseOverhaul.tbin");
-        private string steamSpriteSheetFilename => Path.Combine(assetsRoot, "ztotalbathhouseoverhaul_steam.png");
+        // Asset paths.
+        public const string AssetsRoot = "Assets";
+        private string BathhouseLocationFilename => Path.Combine(AssetsRoot, "TotalBathHouseOverhaul.tbin");
+        private string SteamSpriteSheetFilename => Path.Combine(AssetsRoot, "ztotalbathhouseoverhaul_steam.png");
 
+        // Handles NPC schedules.
+        private ScheduleLibrary ScheduleLibrary;
+
+        // Updates the tiles in the railroad location.
         private RailroadPatcher RailroadPatcher;
 
+        // Detects when custom actions are fired and runs them.
         private ActionManager ActionManager;
         private IInputContext CurrentInputContext;
 
-        public static TotalBathhouseOverhaul instance;
-
-        public IModHelper helper;
-
         public override void Entry(IModHelper helper)
         {
-            //capture the singleton instance and a ref to helper for use around the mod.
-            instance = this;
-            instance.helper = helper;
-
             //load the mod's ability to inject custom scheduling
-            helper.Content.AssetEditors.Add(new ScheduleLibrary());
-
-            //try to initialize the character schedules library.
-            ScheduleLibrary.Initialize(instance.helper);
+            this.ScheduleLibrary = ScheduleLibrary.Create(helper);
+            helper.Content.AssetEditors.Add(this.ScheduleLibrary);
 
             this.RailroadPatcher = new RailroadPatcher(this.Monitor, helper);
 
@@ -59,7 +45,11 @@ namespace TotalBathhouseOverhaul
 
         private void AddEventHandlers()
         {
+            // Listen to input events (keyboard/mouse and gamepad).
             InputEvents.ButtonPressed += InputEvents_ButtonPressed;
+
+            // Watch for season changes.
+            TimeEvents.AfterDayStarted += TimeEvents_AfterDayStarted;
 
             //load the game locations
             SaveEvents.AfterLoad += SaveEvents_AfterLoad;
@@ -70,6 +60,18 @@ namespace TotalBathhouseOverhaul
 
             //then load it back after serialization failure is avoided
             SaveEvents.AfterSave += SaveEvents_AfterSave;
+        }
+
+        private void UnloadMod()
+        {
+            this.Monitor.Log("Unloading.", LogLevel.Info);
+            InputEvents.ButtonPressed -= InputEvents_ButtonPressed;
+            SaveEvents.AfterLoad -= SaveEvents_AfterLoad;
+            SaveEvents.BeforeSave -= SaveEvents_BeforeSave;
+            SaveEvents.AfterReturnToTitle -= SaveEvents_BeforeSave;
+            SaveEvents.AfterSave -= SaveEvents_AfterSave;
+            TimeEvents.AfterDayStarted -= TimeEvents_AfterDayStarted;
+            Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
         }
 
         private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
@@ -98,22 +100,14 @@ namespace TotalBathhouseOverhaul
 
         private void SaveEvents_AfterSave(object sender, EventArgs e)
         {
+            // Add the location back once saving is finished.
             LoadBathhouseMap();
         }
 
         private void SaveEvents_BeforeSave(object sender, EventArgs e)
         {
+            // Remove our location so it doesn't get saved to disk.
             Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
-        }
-
-        private static Point GetMouseHitLocation()
-        {
-            //I wrote this part, basically.
-            double mouseX = (double)(Game1.getMouseX() + Game1.viewport.X - Game1.player.getStandingX());
-            double mouseY = (double)(Game1.getMouseY() + Game1.viewport.Y - Game1.player.getStandingY());
-
-            //figure out where the cursor position should be, relative to the player.
-            return new Point((int)Math.Round((mouseX + Game1.player.getStandingX() - (Game1.tileSize / 2)) / Game1.tileSize), (int)Math.Round((mouseY + Game1.player.getStandingY() - (Game1.tileSize / 2)) / Game1.tileSize));
         }
 
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
@@ -154,13 +148,13 @@ namespace TotalBathhouseOverhaul
                 return;
 
             //load in the TBO sweet sweet tbin
-            Map map = helper.Content.Load<Map>(bathhouseLocationFilename);
+            Map map = this.Helper.Content.Load<Map>(BathhouseLocationFilename);
 
             //ento's hax require some custom manipulation of the always-front later
             if (map.Layers.Contains(map.GetLayer("AlwaysFront")))
                 map.RemoveLayer(map.GetLayer("AlwaysFront"));
 
-            Texture2D steamTexture = this.Helper.Content.Load<Texture2D>(steamSpriteSheetFilename);
+            Texture2D steamTexture = this.Helper.Content.Load<Texture2D>(SteamSpriteSheetFilename);
 
             // add the new location
             GameLocation location = new CustomBathhouse(map, "CustomBathhouse", steamTexture) { IsOutdoors = false, IsFarm = false };
@@ -175,21 +169,11 @@ namespace TotalBathhouseOverhaul
             if (location.map.Properties.ContainsKey("NightTiles"))
                 location.map.Properties.Remove("NightTiles");
 
-            //LoadBathhouseTilesheet(location);
-
             //from Ento, no clue why this works. My life is a mess.
             location.map = map;
 
             //more ento hax
             location.ignoreLights = true;
-        }
- 
-        // Unloads the mod (used when something goes wrong)
-        private void UnloadMod()
-        {
-            // Unsubscribe from events
-            SaveEvents.AfterLoad -= this.SaveEvents_AfterLoad;
-            TimeEvents.AfterDayStarted -= this.TimeEvents_AfterDayStarted;
         }
     }
 }

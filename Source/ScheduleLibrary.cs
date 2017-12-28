@@ -8,9 +8,25 @@ namespace TotalBathhouseOverhaul
 {
     public class ScheduleLibrary : IAssetEditor
     {
+        private IModHelper Helper;
+
         public Dictionary<string, Dictionary<string, Dictionary<string, Dictionary<string, string>>>> CharacterSchedules { get; set; }
 
-        public ScheduleLibrary()
+        // Factory function.
+        public static ScheduleLibrary Create(IModHelper helper)
+        {
+            ScheduleLibrary instance = helper.ReadJsonFile<ScheduleLibrary>("CharacterScheduleLibrary.json");
+            if (instance == null)
+            {
+                instance = new ScheduleLibrary();
+                helper.WriteJsonFile("CharacterScheduleLibrary.json", instance);
+            }
+
+            instance.Helper = helper;
+            return instance;
+        }
+
+        private ScheduleLibrary()
         {
             this.CharacterSchedules = new Dictionary<string, Dictionary<string, Dictionary<string, Dictionary<string, string>>>>();
         }
@@ -26,9 +42,9 @@ namespace TotalBathhouseOverhaul
 
             Dictionary<string, string> assetData = (Dictionary<string, string>)asset.AsDictionary<string, string>().Data;
 
-            if (!ScheduleLibrary.instance.CharacterSchedules.ContainsKey(scheduleCharacter))
+            if (!this.CharacterSchedules.ContainsKey(scheduleCharacter))
             {
-                ScheduleLibrary.Initialize(scheduleCharacter, assetData);
+                Initialize(scheduleCharacter, assetData);
             }
 
             List<string> keysToPurge = assetData.Keys.ToList();
@@ -39,18 +55,18 @@ namespace TotalBathhouseOverhaul
                 assetData.Remove(keyToPurge);
             }
 
-            Dictionary<string, string> compressedScheduleData = ScheduleLibrary.Compress(scheduleCharacter);
+            Dictionary<string, string> compressedScheduleData = Compress(scheduleCharacter);
             foreach (KeyValuePair<string, string> compressedScheduleEntry in compressedScheduleData)
             {
                 asset.AsDictionary<string, string>().Data[compressedScheduleEntry.Key] = compressedScheduleEntry.Value;
             }
         }
 
-        public static Dictionary<string, string> Compress (string characterName)
+        public Dictionary<string, string> Compress(string characterName)
         {   
             Dictionary<string, string> compressedDictionary = new Dictionary<string, string>();
 
-            foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, string>>> characterScheduleRow in instance.CharacterSchedules[characterName])
+            foreach (KeyValuePair<string, Dictionary<string, Dictionary<string, string>>> characterScheduleRow in this.CharacterSchedules[characterName])
             {
                 //the string value for this schedule item
                 string compressedSchedule = string.Empty;
@@ -151,31 +167,19 @@ namespace TotalBathhouseOverhaul
 
         }
 
-        internal static void WriteFile(IModHelper helper)
+        internal void WriteFile()
         {
-            helper.WriteJsonFile("CharacterScheduleLibrary.json", instance);
+            this.Helper.WriteJsonFile("CharacterScheduleLibrary.json", this);
         }
 
-        public static ScheduleLibrary instance;
-
-        public static void Initialize(IModHelper helper)
+        internal void Initialize(string scheduleCharacter, Dictionary<string, string> dictionary)
         {
-            instance = helper.ReadJsonFile<ScheduleLibrary>("CharacterScheduleLibrary.json");
-            if (instance == null)
-            {
-                instance = new ScheduleLibrary();
-                helper.WriteJsonFile("CharacterScheduleLibrary.json", instance);
-            }
-        }
+            if (!this.CharacterSchedules.ContainsKey(scheduleCharacter))
+                this.CharacterSchedules.Add(scheduleCharacter, null);
 
-        internal static void Initialize(string scheduleCharacter, Dictionary<string, string> dictionary)
-        {
-            if (!instance.CharacterSchedules.ContainsKey(scheduleCharacter))
-                instance.CharacterSchedules.Add(scheduleCharacter, null);
-
-            if (instance.CharacterSchedules[scheduleCharacter] == null)
+            if (this.CharacterSchedules[scheduleCharacter] == null)
             {
-                instance.CharacterSchedules[scheduleCharacter] = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+                this.CharacterSchedules[scheduleCharacter] = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
                 foreach (KeyValuePair<string, string> scheduleKeyValuePair in dictionary)
                 {
                     string key = scheduleKeyValuePair.Key;
@@ -327,12 +331,12 @@ namespace TotalBathhouseOverhaul
                     }
 
                     //add this schedule key and the dictionary in its entirety.
-                    instance.CharacterSchedules[scheduleCharacter].Add(key, adjustedScheduleDictionary);
+                    this.CharacterSchedules[scheduleCharacter].Add(key, adjustedScheduleDictionary);
                 }
             }
 
             //save progress on each successful initialization
-            WriteFile(TotalBathhouseOverhaul.instance.helper);
+            WriteFile();
         }
     }
 }
