@@ -7,6 +7,8 @@ using xTile.Tiles;
 
 namespace TotalBathhouseOverhaul
 {
+    // TODO: Put the generic detection in a base class and derive
+    // for detecting the different property types (action, touch action etc.)
     internal class ActionManager
     {
         private IModHelper Helper;
@@ -41,7 +43,6 @@ namespace TotalBathhouseOverhaul
         {
             Point grabTilePoint = inputContext.GetGrabTIlePoint();
             // Prevent running the action if the player is too far.
-            // TODO: Let the action decide how far the player can be.
             if (!Utility.tileWithinRadiusOfPlayer(grabTilePoint.X, grabTilePoint.Y, 1, Game1.player))
                 return;
 

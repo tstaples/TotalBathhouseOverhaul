@@ -92,7 +92,7 @@ namespace TotalBathhouseOverhaul
             if (!Context.IsWorldReady)
                 return;
 
-            // TODO: remove ControllerA check once IsActionButton works for gamepads.
+            // TODO: remove ControllerA check once IsActionButton works for gamepads. https://github.com/Pathoschild/SMAPI/issues/416
             if (e.IsActionButton || e.Button == SButton.ControllerA)
             {
                 const int controllerOffset = 2000;

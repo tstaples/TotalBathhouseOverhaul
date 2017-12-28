@@ -1,6 +1,5 @@
 ﻿using System;
 using StardewModdingAPI;
-using xTile.ObjectModel;
 using StardewValley;
 
 namespace TotalBathhouseOverhaul
@@ -11,12 +10,12 @@ namespace TotalBathhouseOverhaul
     /// </summary>
     internal class MessageAction : TileAction
     {
-        protected override string CommandName => "Message";
+        protected override string CommandName => "CustomMessage";
         protected override int MinimumArgs => 1;
 
         private string MessageKey => this.Args[0];
 
-        // Format is: Message "MessageKey"
+        // Format is: CustomMessage "MessageKey"
         protected override string ProcessArgument(string argument, int index)
         {
             return argument.Trim('"');
@@ -30,7 +29,7 @@ namespace TotalBathhouseOverhaul
                 Translation translation = helper.Translation.Get(this.MessageKey);
                 if (translation.HasValue())
                 {
-                    Game1.drawObjectDialogue(translation);
+                    Game1.drawDialogueNoTyping(translation);
                 }
             }
         }
