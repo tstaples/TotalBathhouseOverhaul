@@ -1,18 +1,18 @@
 ﻿{
   "zTotalBathhouseOverhaul_DrinkingFountain": "This is a drinking fountain."
   "zTotalBathhouseOverhaul_SafetySign": "No roughhousing!",
-  "zTotalBathhouseOverhaul_WomensLocker.1": "The top locker is Abigail's. It stinks pretty bad. $e The bottom locker is Penny's. There's a frilly bathing suit inside.",
-  "zTotalBathhouseOverhaul_WomensLocker.2": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_WomensLocker.3": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_WomensLocker.4": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_WomensLocker.5": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_WomensLocker.6": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_WomensLocker.7": "This is what will show up in the dialogue box.",
+  "zTotalBathhouseOverhaul_WomensLocker.1": "The top locker is Abigail's. It stinks pretty bad. $e#The bottom locker is Penny's. There's a frilly bathing suit inside.",
+  "zTotalBathhouseOverhaul_WomensLocker.2": "f locker 2",
+  "zTotalBathhouseOverhaul_WomensLocker.3": "f locker 3",
+  "zTotalBathhouseOverhaul_WomensLocker.4": "f locker 4",
+  "zTotalBathhouseOverhaul_WomensLocker.5": "f locker 5",
+  "zTotalBathhouseOverhaul_WomensLocker.6": "f locker 6",
+  "zTotalBathhouseOverhaul_WomensLocker.7": "f locker 7",
   "zTotalBathhouseOverhaul_MensLocker.1": "The top locker is Alex's. There's a bunch of pictures of bodybuilders taped inside the door.",
-  "zTotalBathhouseOverhaul_MensLocker.2": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_MensLocker.3": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_MensLocker.4": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_MensLocker.5": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_MensLocker.6": "This is what will show up in the dialogue box.",
-  "zTotalBathhouseOverhaul_MensLocker.7": "This is what will show up in the dialogue box."
+  "zTotalBathhouseOverhaul_MensLocker.2": "m locker 2",
+  "zTotalBathhouseOverhaul_MensLocker.3": "m locker 3",
+  "zTotalBathhouseOverhaul_MensLocker.4": "m locker 4",
+  "zTotalBathhouseOverhaul_MensLocker.5": "m locker 5",
+  "zTotalBathhouseOverhaul_MensLocker.6": "m locker 6",
+  "zTotalBathhouseOverhaul_MensLocker.7": "m locker 7"
 }
