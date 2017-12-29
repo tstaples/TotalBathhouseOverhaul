@@ -2,49 +2,109 @@
 using StardewValley;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using xTile;
 using xTile.Dimensions;
 using xTile.Layers;
+using xTile.ObjectModel;
 using xTile.Tiles;
 
 namespace TotalBathhouseOverhaul
 {
     internal class MapEditor
     {
-        private string VanillaMapPath;
-        private string ModifiedMapPath;
-        private string LocationName;
-        private string TilesheetRoot;
-
         private Map VanillaMap;
         private Map ModifiedMap;
         private Map TargetMap;
         private GameLocation TargetLocation;
 
         private IModHelper Helper;
+        private IMonitor Monitor;
 
-        public MapEditor(IModHelper helper)
+        private bool Initialized = false;
+
+        public MapEditor(IModHelper helper, IMonitor monitor)
         {
             this.Helper = helper;
+            this.Monitor = monitor;
         }
 
-        public void Load(string locationName, string vanillaMapPath, string modifiedMapPath)
+        public bool Init(string locationName, string vanillaMapPath, string modifiedMapPath)
         {
-            this.VanillaMapPath = vanillaMapPath;
-            this.ModifiedMapPath = modifiedMapPath;
-            this.LocationName = locationName;
+            try
+            {
+                this.VanillaMap = Helper.Content.Load<Map>(vanillaMapPath);
+                this.ModifiedMap = Helper.Content.Load<Map>(modifiedMapPath);
+                this.TargetLocation = Game1.getLocationFromName(locationName);
+                this.TargetMap = this.TargetLocation.map;
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Error initializing MapEditor: {ex}");
+                return false;
+            }
+            this.Initialized = true;
+            return true;
+        }
 
-            this.VanillaMap = Helper.Content.Load<Map>(vanillaMapPath);
-            this.ModifiedMap = Helper.Content.Load<Map>(modifiedMapPath);
-            this.TargetLocation = Game1.getLocationFromName(locationName);
-            this.TargetMap = this.TargetLocation.map;
+        public void Patch(string tilsheetRoot, string[] layersToModify)
+        {
+            Debug.Assert(this.Initialized);
+
+            // Copy map properties
+            foreach (var property in this.ModifiedMap.Properties)
+            {
+                // Only add it if it's not in the vanilla map properties or we changed the value.
+                // This way we only set things we actually changed.
+                if (!this.VanillaMap.Properties.ContainsKey(property.Key) ||
+                    this.VanillaMap.Properties[property.Key] != property.Value)
+                {
+                    this.TargetMap.Properties[property.Key] = property.Value;
+                }
+            }
+
+            try
+            {
+                AddMissingTilesheets(tilsheetRoot);
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Error adding missing tilesheets to {this.TargetMap?.Id} from root {tilsheetRoot}: {ex}");
+                return;
+            }
+
+            try
+            {
+                ApplyChangesToLayers(layersToModify);
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Error applying changes to layers: {ex}");
+                return;
+            }
+        }
+
+        public void Patch(string tilsheetRoot)
+        {
+            Debug.Assert(this.Initialized);
+
+            string[] layers = this.TargetMap.Layers
+                .Select(l => l.Id)
+                .ToArray();
+            Patch(tilsheetRoot, layers);
+        }
+
+        private void ApplyChangesToLayers(string[] layers)
+        {
+            foreach (string layer in layers)
+            {
+                ApplyChanges(layer);
+            }
         }
 
         // Add any tilesheets that the modified map has to the target map.
-        public void AddMissingTilesheets(string tilsheetRoot)
+        private void AddMissingTilesheets(string tilsheetRoot)
         {
             foreach (var sheet in this.ModifiedMap.TileSheets)
             {
@@ -52,6 +112,7 @@ namespace TotalBathhouseOverhaul
                 bool targetHasSheet = this.TargetMap.TileSheets.Count(s => s.Id == sheet.Id) > 0;
                 if (!targetHasSheet)
                 {
+                    // This only works if the filename is the same as the tilesheet name.
                     // TODO: have this take a delegate to get the path for the sheet id if needed.
                     string tilesheetPath = $@"{tilsheetRoot}\{sheet.Id}.png";
                     TileSheet ts = new TileSheet(
@@ -68,85 +129,134 @@ namespace TotalBathhouseOverhaul
             this.TargetMap.LoadTileSheets(Game1.mapDisplayDevice);
         }
 
-        public void ApplyChangesToLayers()
-        {
-            // Apply to all layers
-            foreach (Layer layer in this.TargetMap.Layers)
-            {
-                ApplyChanges(layer.Id);
-            }
-        }
-
-        public void ApplyChangesToLayers(string[] layers)
-        {
-            foreach (string layer in layers)
-            {
-                ApplyChanges(layer);
-            }
-        }
-
         private void ApplyChanges(string layer)
         {
             Layer targetLayer = this.TargetMap.GetLayer(layer);
             Layer modifiedLayer = this.ModifiedMap.GetLayer(layer);
             Layer vanillaLayer = this.VanillaMap.GetLayer(layer);
 
-            for (int x = 0; x < targetLayer.TileWidth; ++x)
+            // TODO: Maybe support adding new layers if we need it.
+            if (targetLayer == null || modifiedLayer == null || vanillaLayer == null)
             {
-                for (int y = 0; y < targetLayer.TileHeight; ++y)
+                this.Monitor.Log($"Couldn't find layer '{layer}' in one of the maps; skipping.");
+                return;
+            }
+
+            for (int y = 0; y < targetLayer.TileHeight; ++y)
+            {
+                for (int x = 0; x < targetLayer.TileWidth; ++x)
                 {
                     Tile vanillaTile = vanillaLayer.Tiles[x, y];
                     Tile modTile = modifiedLayer.Tiles[x, y];
-                    Tile tile = targetLayer.Tiles[x, y];
+                    Tile targetTile = targetLayer.Tiles[x, y];
 
-                    if (modTile == null && vanillaTile != null)
+                    // If it was set in the vanilla map but isn't in our map then it was deleted.
+                    if (modTile == null)
                     {
-                        // delete the tile
-                        targetLayer.Tiles[x, y] = null;
-                    }
-                    else if (modTile != null && (vanillaTile == null || modTile.TileIndex != vanillaTile.TileIndex || modTile.TileSheet.Id != vanillaTile.TileSheet.Id))
-                    {
-                        var blendMode = modTile.BlendMode;
-                        var tileIndex = modTile.TileIndex;
-                        // Find the tilesheet with a matching ID
-                        TileSheet newSheet = this.TargetMap.TileSheets
-                            .Where(s => s.Id == modTile.TileSheet.Id)
-                            .First();
-
-                        Tile newTile = new StaticTile(targetLayer, newSheet, blendMode, tileIndex);
-
-                        // WIP animated tile support.
-                        //Tile newTile = null;
-                        //AnimatedTile animatedModTile = (AnimatedTile)modTile;
-                        //if (animatedModTile != null)
-                        //{
-                        //    StaticTile[] frames = new StaticTile[animatedModTile.TileFrames.Length];
-                        //    for (int i = 0; i < animatedModTile.TileFrames.Length; ++i)
-                        //    {
-                        //        StaticTile copyFrame = animatedModTile.TileFrames[i];
-                        //        frames[i] = new StaticTile(copyFrame.Layer, newSheet, copyFrame.BlendMode, copyFrame.TileIndex);
-                        //    }
-                        //    newTile = new AnimatedTile(targetLayer, frames, animatedModTile.FrameInterval);
-                        //}
-                        //else
-                        //{
-                        //    newTile = new StaticTile(targetLayer, newSheet, blendMode, tileIndex);
-                        //}
-
-                        // Keep the tiles original properties
-                        if (tile != null)
-                            newTile.Properties.CopyFrom(tile.Properties);
-
-                        // Add new properties from the modified tile, replacing any that already exist.
-                        foreach (var pair in modTile.Properties)
+                        if (vanillaTile != null)
                         {
-                            if (!newTile.Properties.ContainsKey(pair.Key))
-                                newTile.Properties.Add(pair.Key, pair.Value);
-                            else
-                                newTile.Properties[pair.Key] = pair.Value; // overwrite
+                            // delete the tile
+                            targetLayer.Tiles[x, y] = null;
                         }
+                        continue;
+                    }
+
+                    Tile newTile = targetTile;
+                    if (vanillaTile == null || AreTileSpritesDifferent(modTile, vanillaTile))
+                    {
+                        // Find the tilesheet with a matching ID
+                        TileSheet tileSheet = GetTilesheetByID(this.TargetMap, modTile.TileSheet.Id);
+                        if (tileSheet == null)
+                        {
+                            this.Monitor.Log($"Failed to find tilesheet {modTile.TileSheet.Id} in target map: {this.TargetMap.Id}");
+                            continue;
+                        }
+
+                        // If the vanilla tile and mod tile don't have this property it must be from another mod, so keep it.
+                        var additionalProperties = targetTile?.Properties
+                            .Where(p => (vanillaTile == null || !vanillaTile.Properties.ContainsKey(p.Key)) && !modTile.Properties.ContainsKey(p.Key));
+
+                        newTile = CopyTile(modTile, tileSheet, targetLayer, additionalProperties as IPropertyCollection);
+                    }
+                    // The tile didn't change but the properties did.
+                    else if (vanillaTile == null || AreTilePropertiesDifferent(modTile, vanillaTile))
+                    {
+                        MergeTileProperties(modTile, newTile);
+                    }
+
+                    if (newTile != null)
+                    {
                         targetLayer.Tiles[x, y] = newTile;
                     }
+                }
+            }
+        }
+
+        private bool AreTileSpritesDifferent(Tile a, Tile b)
+        {
+            return a.TileIndex != b.TileIndex || a.TileSheet.Id != b.TileSheet.Id;
+        }
+
+        private bool AreTilePropertiesDifferent(Tile a, Tile b)
+        {
+            return a.Properties != b.Properties;
+        }
+
+        // Clones a tile but uses the provided tilesheet and layer.
+        private Tile CopyTile(Tile source, TileSheet tileSheet, Layer layer, IPropertyCollection additionalProperties = null)
+        {
+            var blendMode = source.BlendMode;
+            var tileIndex = source.TileIndex;
+
+            Tile newTile = null;
+            if (source is AnimatedTile)
+            {
+                AnimatedTile animatedTile = source as AnimatedTile;
+                // Copy the frames
+                StaticTile[] frames = new StaticTile[animatedTile.TileFrames.Length];
+                for (int i = 0; i < animatedTile.TileFrames.Length; ++i)
+                {
+                    StaticTile copyFrame = animatedTile.TileFrames[i];
+                    frames[i] = new StaticTile(layer, tileSheet, copyFrame.BlendMode, copyFrame.TileIndex);
+                }
+
+                newTile = new AnimatedTile(layer, frames, animatedTile.FrameInterval);
+            }
+            else
+            {
+                newTile = new StaticTile(layer, tileSheet, blendMode, tileIndex);
+            }
+
+            if (additionalProperties?.Count > 0)
+            {
+                newTile.Properties.CopyFrom(additionalProperties);
+            }
+
+            // Do this after adding the additional properties so it overwrites any conflicting ones.
+            MergeTileProperties(source, newTile);
+
+            return newTile;
+        }
+
+        private TileSheet GetTilesheetByID(Map map, string Id)
+        {
+            return this.TargetMap.TileSheets
+                .Where(s => s.Id == Id)
+                .First();
+        }
+
+        private void MergeTileProperties(Tile from, Tile to, bool replaceConflicting = true)
+        {
+            // Add new properties from the modified tile, replacing any that already exist.
+            foreach (var pair in from.Properties)
+            {
+                if (!to.Properties.ContainsKey(pair.Key))
+                {
+                    to.Properties.Add(pair.Key, pair.Value);
+                }
+                else if (replaceConflicting)
+                {
+                    to.Properties[pair.Key] = pair.Value; // overwrite
                 }
             }
         }
