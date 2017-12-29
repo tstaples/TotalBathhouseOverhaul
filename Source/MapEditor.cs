@@ -235,6 +235,9 @@ namespace TotalBathhouseOverhaul
             // Do this after adding the additional properties so it overwrites any conflicting ones.
             MergeTileProperties(source, newTile);
 
+            // Copy the tile properties. This contains the data set on tiles on the actual tilesheet (ie. passable).
+            newTile.TileIndexProperties.CopyFrom(source.TileIndexProperties);
+
             return newTile;
         }
 
