@@ -13,6 +13,8 @@ namespace TotalBathhouseOverhaul
 {
     public class TotalBathhouseOverhaul : Mod
     {
+        public const string BathhouseLocationName = "TotalBathhouseOverhaul";
+
         // Asset paths.
         public const string AssetsRoot = "Assets";
         private string BathhouseLocationFilename => Path.Combine(AssetsRoot, "TotalBathHouseOverhaul.tbin");
@@ -72,7 +74,7 @@ namespace TotalBathhouseOverhaul
             SaveEvents.AfterReturnToTitle -= SaveEvents_BeforeSave;
             SaveEvents.AfterSave -= SaveEvents_AfterSave;
             TimeEvents.AfterDayStarted -= TimeEvents_AfterDayStarted;
-            Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
+            Game1.locations.Remove(Game1.getLocationFromName(BathhouseLocationName));
         }
 
         private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
@@ -95,7 +97,7 @@ namespace TotalBathhouseOverhaul
             }
             else if (e.Button.Equals(SButton.F7))
             {
-                Game1.warpFarmer("CustomBathhouse", 27, 30, false);
+                Game1.warpFarmer(BathhouseLocationName, 27, 30, false);
             }
         }
 
@@ -108,7 +110,7 @@ namespace TotalBathhouseOverhaul
         private void SaveEvents_BeforeSave(object sender, EventArgs e)
         {
             // Remove our location so it doesn't get saved to disk.
-            Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
+            Game1.locations.Remove(Game1.getLocationFromName(BathhouseLocationName));
         }
 
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
@@ -137,7 +139,7 @@ namespace TotalBathhouseOverhaul
         private void LoadBathhouseMap()
         {
             //if for whatever reason this exists already, abort. There's a problem.
-            if (Game1.getLocationFromName("CustomBathhouse") != null)
+            if (Game1.getLocationFromName(BathhouseLocationName) != null)
                 return;
 
             //load in the TBO sweet sweet tbin
@@ -150,7 +152,7 @@ namespace TotalBathhouseOverhaul
             Texture2D steamTexture = this.Helper.Content.Load<Texture2D>(SteamSpriteSheetFilename);
 
             // add the new location
-            GameLocation location = new CustomBathhouse(map, "CustomBathhouse", steamTexture) { IsOutdoors = false, IsFarm = false };
+            GameLocation location = new CustomBathhouse(map, BathhouseLocationName, steamTexture) { IsOutdoors = false, IsFarm = false };
 
             Game1.locations.Add(location);
 
