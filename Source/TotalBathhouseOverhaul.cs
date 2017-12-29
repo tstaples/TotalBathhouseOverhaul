@@ -5,7 +5,9 @@ using System.IO;
 using xTile;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-
+using xTile.Tiles;
+using System.Linq;
+using xTile.Dimensions;
 
 namespace TotalBathhouseOverhaul
 {
@@ -20,7 +22,8 @@ namespace TotalBathhouseOverhaul
         private ScheduleLibrary ScheduleLibrary;
 
         // Updates the tiles in the railroad location.
-        private RailroadPatcher RailroadPatcher;
+        //private RailroadPatcher RailroadPatcher;
+        private MapEditor MapEditor;
 
         // Detects when custom actions are fired and runs them.
         private ActionManager ActionManager;
@@ -32,7 +35,8 @@ namespace TotalBathhouseOverhaul
             this.ScheduleLibrary = ScheduleLibrary.Create(helper);
             helper.Content.AssetEditors.Add(this.ScheduleLibrary);
 
-            this.RailroadPatcher = new RailroadPatcher(this.Monitor, helper);
+            //this.RailroadPatcher = new RailroadPatcher(this.Monitor, helper);
+            this.MapEditor = new MapEditor(helper);
 
             this.CurrentInputContext = MouseInputContext.DefaultContext;
             this.ActionManager = new ActionManager(this.Helper, this.Monitor);
@@ -116,7 +120,7 @@ namespace TotalBathhouseOverhaul
 
             try
             {
-               this.RailroadPatcher.OnGameLoaded();
+               //this.RailroadPatcher.OnGameLoaded();
             }
             catch (FailedToLoadTilesheetException)
             {
@@ -132,7 +136,7 @@ namespace TotalBathhouseOverhaul
             {
                 try
                 {
-                    this.RailroadPatcher.OnSeasonChanged();
+                    //this.RailroadPatcher.OnSeasonChanged();
                 }
                 catch (FailedToLoadTilesheetException)
                 {
@@ -168,6 +172,12 @@ namespace TotalBathhouseOverhaul
             //apparently this does things too.
             if (location.map.Properties.ContainsKey("NightTiles"))
                 location.map.Properties.Remove("NightTiles");
+
+            string vanillaPath = Path.Combine(AssetsRoot, "Railroad_Original.tbin");
+            string modifiedPath = Path.Combine(AssetsRoot, "Railroad.tbin");
+            this.MapEditor.Load("RailRoad", vanillaPath, modifiedPath);
+            this.MapEditor.AddMissingTilesheets(AssetsRoot);
+            this.MapEditor.ApplyChangesToLayers();
 
             //from Ento, no clue why this works. My life is a mess.
             location.map = map;
