@@ -5,12 +5,16 @@ using System.IO;
 using xTile;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-
+using xTile.Tiles;
+using System.Linq;
+using xTile.Dimensions;
 
 namespace TotalBathhouseOverhaul
 {
     public class TotalBathhouseOverhaul : Mod
     {
+        public const string BathhouseLocationName = "TotalBathhouseOverhaul";
+
         // Asset paths.
         public const string AssetsRoot = "Assets";
         private string BathhouseLocationFilename => Path.Combine(AssetsRoot, "TotalBathHouseOverhaul.tbin");
@@ -19,8 +23,7 @@ namespace TotalBathhouseOverhaul
         // Handles NPC schedules.
         private ScheduleLibrary ScheduleLibrary;
 
-        // Updates the tiles in the railroad location.
-        private RailroadPatcher RailroadPatcher;
+        private MapEditor MapEditor;
 
         // Detects when custom actions are fired and runs them.
         private ActionManager ActionManager;
@@ -32,7 +35,7 @@ namespace TotalBathhouseOverhaul
             this.ScheduleLibrary = ScheduleLibrary.Create(helper);
             helper.Content.AssetEditors.Add(this.ScheduleLibrary);
 
-            this.RailroadPatcher = new RailroadPatcher(this.Monitor, helper);
+            this.MapEditor = new MapEditor(helper, this.Monitor);
 
             this.CurrentInputContext = MouseInputContext.DefaultContext;
             this.ActionManager = new ActionManager(this.Helper, this.Monitor);
@@ -71,7 +74,7 @@ namespace TotalBathhouseOverhaul
             SaveEvents.AfterReturnToTitle -= SaveEvents_BeforeSave;
             SaveEvents.AfterSave -= SaveEvents_AfterSave;
             TimeEvents.AfterDayStarted -= TimeEvents_AfterDayStarted;
-            Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
+            Game1.locations.Remove(Game1.getLocationFromName(BathhouseLocationName));
         }
 
         private void InputEvents_ButtonPressed(object sender, EventArgsInput e)
@@ -94,7 +97,7 @@ namespace TotalBathhouseOverhaul
             }
             else if (e.Button.Equals(SButton.F7))
             {
-                Game1.warpFarmer("CustomBathhouse", 27, 30, false);
+                Game1.warpFarmer(BathhouseLocationName, 27, 30, false);
             }
         }
 
@@ -107,20 +110,19 @@ namespace TotalBathhouseOverhaul
         private void SaveEvents_BeforeSave(object sender, EventArgs e)
         {
             // Remove our location so it doesn't get saved to disk.
-            Game1.locations.Remove(Game1.getLocationFromName("CustomBathhouse"));
+            Game1.locations.Remove(Game1.getLocationFromName(BathhouseLocationName));
         }
 
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
         {
             LoadBathhouseMap();
 
-            try
+            string vanillaPath = Path.Combine(AssetsRoot, "Railroad_Original.tbin");
+            string modifiedPath = Path.Combine(AssetsRoot, "Railroad.tbin");
+
+            if (this.MapEditor.Init("RailRoad", vanillaPath, modifiedPath))
             {
-               this.RailroadPatcher.OnGameLoaded();
-            }
-            catch (FailedToLoadTilesheetException)
-            {
-                UnloadMod();
+                this.MapEditor.Patch(AssetsRoot);
             }
         }
 
@@ -130,21 +132,14 @@ namespace TotalBathhouseOverhaul
             // If it's the start of a season, load the new tilesheet texture and set it to the new image source for the custom tilesheet
             if (Game1.dayOfMonth == 1)
             {
-                try
-                {
-                    this.RailroadPatcher.OnSeasonChanged();
-                }
-                catch (FailedToLoadTilesheetException)
-                {
-                    UnloadMod();
-                }
+                // TODO: Do season change stuff in mapeditor
             }
         }
 
         private void LoadBathhouseMap()
         {
             //if for whatever reason this exists already, abort. There's a problem.
-            if (Game1.getLocationFromName("CustomBathhouse") != null)
+            if (Game1.getLocationFromName(BathhouseLocationName) != null)
                 return;
 
             //load in the TBO sweet sweet tbin
@@ -157,7 +152,7 @@ namespace TotalBathhouseOverhaul
             Texture2D steamTexture = this.Helper.Content.Load<Texture2D>(SteamSpriteSheetFilename);
 
             // add the new location
-            GameLocation location = new CustomBathhouse(map, "CustomBathhouse", steamTexture) { IsOutdoors = false, IsFarm = false };
+            GameLocation location = new CustomBathhouse(map, BathhouseLocationName, steamTexture) { IsOutdoors = false, IsFarm = false };
 
             Game1.locations.Add(location);
 

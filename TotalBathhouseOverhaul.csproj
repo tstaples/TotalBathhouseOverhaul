@@ -53,6 +53,7 @@
     <Compile Include="Source\InputContexts\MouseInputContext.cs" />
     <Compile Include="Source\Actions\TileAction.cs" />
     <Compile Include="Source\CustomBathhouse.cs" />
+    <Compile Include="Source\MapEditor.cs" />
     <Compile Include="Source\RailroadPatcher.cs" />
     <Compile Include="Source\ScheduleLibrary.cs" />
     <Compile Include="Source\TotalBathhouseOverhaul.cs" />
