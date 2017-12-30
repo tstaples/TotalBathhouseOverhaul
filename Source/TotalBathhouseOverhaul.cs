@@ -156,6 +156,11 @@ namespace TotalBathhouseOverhaul
 
             Game1.locations.Add(location);
 
+            // TODO: cleanup location adding.
+            Map sennaMap = this.Helper.Content.Load<Map>(Path.Combine(AssetsRoot, "SennaRoom.tbin"));
+            GameLocation sennasRoom = new GameLocation(sennaMap, "SennaRoom");
+            Game1.locations.Add(sennasRoom);
+
             //apparently this does things
             if (location.map.Properties.ContainsKey("DayTiles"))
                 location.map.Properties.Remove("DayTiles");
