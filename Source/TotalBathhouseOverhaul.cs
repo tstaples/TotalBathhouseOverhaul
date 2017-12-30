@@ -8,6 +8,7 @@ using System;
 using xTile.Tiles;
 using System.Linq;
 using xTile.Dimensions;
+using Microsoft.Xna.Framework;
 
 namespace TotalBathhouseOverhaul
 {
@@ -44,6 +45,15 @@ namespace TotalBathhouseOverhaul
 
             //wire up various events
             AddEventHandlers();
+
+#if DEBUG
+            // Changes the season and updates the map.
+            helper.ConsoleCommands.Add("change_season", "", (name, args) =>
+            {
+                helper.ConsoleCommands.Trigger("world_setseason", args);
+                this.MapEditor.SeasonChanged(Game1.currentSeason);
+            });
+#endif // DEBUG
         }
 
         private void AddEventHandlers()
@@ -99,6 +109,12 @@ namespace TotalBathhouseOverhaul
             {
                 Game1.warpFarmer(BathhouseLocationName, 27, 30, false);
             }
+            else if (e.Button.Equals(SButton.F8))
+            {
+                // Warp to bed
+                Point bedSpot = (Game1.getLocationFromName("FarmHouse") as StardewValley.Locations.FarmHouse).getBedSpot();
+                Game1.warpFarmer("FarmHouse", bedSpot.X, bedSpot.Y, false);
+            }
         }
 
         private void SaveEvents_AfterSave(object sender, EventArgs e)
@@ -120,7 +136,7 @@ namespace TotalBathhouseOverhaul
             string vanillaPath = Path.Combine(AssetsRoot, "Railroad_Original.tbin");
             string modifiedPath = Path.Combine(AssetsRoot, "Railroad.tbin");
 
-            if (this.MapEditor.Init("RailRoad", vanillaPath, modifiedPath))
+            if (this.MapEditor.Init("RailRoad", vanillaPath, modifiedPath, new BathHouseTileSheetResolver()))
             {
                 this.MapEditor.Patch(AssetsRoot);
             }
@@ -132,6 +148,7 @@ namespace TotalBathhouseOverhaul
             // If it's the start of a season, load the new tilesheet texture and set it to the new image source for the custom tilesheet
             if (Game1.dayOfMonth == 1)
             {
+                this.MapEditor.SeasonChanged(Game1.currentSeason);
                 // TODO: Do season change stuff in mapeditor
             }
         }

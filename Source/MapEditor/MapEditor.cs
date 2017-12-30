@@ -1,4 +1,5 @@
-﻿using StardewModdingAPI;
+﻿using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI;
 using StardewValley;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,8 @@ namespace TotalBathhouseOverhaul
         private Map TargetMap;
         private GameLocation TargetLocation;
 
+        private ITileSheetResolver TileSheetResolver;
+
         private IModHelper Helper;
         private IMonitor Monitor;
 
@@ -30,7 +33,7 @@ namespace TotalBathhouseOverhaul
             this.Monitor = monitor;
         }
 
-        public bool Init(string locationName, string vanillaMapPath, string modifiedMapPath)
+        public bool Init(string locationName, string vanillaMapPath, string modifiedMapPath, ITileSheetResolver tileSheetResolver)
         {
             try
             {
@@ -38,6 +41,7 @@ namespace TotalBathhouseOverhaul
                 this.ModifiedMap = Helper.Content.Load<Map>(modifiedMapPath);
                 this.TargetLocation = Game1.getLocationFromName(locationName);
                 this.TargetMap = this.TargetLocation.map;
+                this.TileSheetResolver = tileSheetResolver;
             }
             catch (Exception ex)
             {
@@ -95,6 +99,33 @@ namespace TotalBathhouseOverhaul
             Patch(tilsheetRoot, layers);
         }
 
+        public void SeasonChanged(string newSeason)
+        {
+            Debug.Assert(this.Initialized);
+
+            foreach (var sheetId in this.TileSheetResolver.GetUniqueIdsForSeasonalTileSheets())
+            {
+                TileSheet tileSheet = this.TargetMap.GetTileSheet(sheetId);
+                if (tileSheet != null)
+                {
+                    string imageSource = this.TileSheetResolver.GetTileSheetPathForSeason(sheetId, newSeason);
+                    try
+                    {
+                        // Load the image so it's in the cache.
+                        this.Helper.Content.Load<Texture2D>(imageSource);
+                    }
+                    catch (Exception ex)
+                    {
+                        this.Monitor.Log($"Failed to load tilesheet: {imageSource} for season {newSeason}: {ex}", LogLevel.Error);
+                        continue;
+                    }
+
+                    tileSheet.ImageSource = this.Helper.Content.GetActualAssetKey(imageSource);
+                }
+            }
+            this.TargetMap.LoadTileSheets(Game1.mapDisplayDevice);
+        }
+
         private void ApplyChangesToLayers(string[] layers)
         {
             foreach (string layer in layers)
@@ -112,13 +143,14 @@ namespace TotalBathhouseOverhaul
                 bool targetHasSheet = this.TargetMap.TileSheets.Count(s => s.Id == sheet.Id) > 0;
                 if (!targetHasSheet)
                 {
-                    // This only works if the filename is the same as the tilesheet name.
-                    // TODO: have this take a delegate to get the path for the sheet id if needed.
-                    string tilesheetPath = $@"{tilsheetRoot}\{sheet.Id}.png";
+                    // We might need to store this unique id -> sheet mapping so we know which sheets are custom.
+                    string tileSheetId = this.TileSheetResolver.GetUniqueIdForTileSheet(sheet.Id); // Convert "sheet_spring" to say "sheet"
+                    string tileSheetPath = this.TileSheetResolver.GetTileSheetPathForSeason(tileSheetId, Game1.currentSeason);
                     TileSheet ts = new TileSheet(
-                       id: sheet.Id, // a unique ID for the tilesheet
+                       id: tileSheetId,
+                       //id: sheet.Id, // a unique ID for the tilesheet
                        map: this.TargetMap,
-                       imageSource: this.Helper.Content.GetActualAssetKey(tilesheetPath),
+                       imageSource: this.Helper.Content.GetActualAssetKey(tileSheetPath),
                        sheetSize: sheet.SheetSize, // the size of your tilesheet image (number of columns, number of rows).
                        tileSize: sheet.TileSize // should always be 16x16 for maps
                     );
@@ -165,7 +197,8 @@ namespace TotalBathhouseOverhaul
                     if (vanillaTile == null || AreTileSpritesDifferent(modTile, vanillaTile))
                     {
                         // Find the tilesheet with a matching ID
-                        TileSheet tileSheet = GetTilesheetByID(this.TargetMap, modTile.TileSheet.Id);
+                        string uniqueTileSheetId = this.TileSheetResolver.GetUniqueIdForTileSheet(modTile.TileSheet.Id);
+                        TileSheet tileSheet = GetTilesheetByID(this.TargetMap, uniqueTileSheetId);
                         if (tileSheet == null)
                         {
                             this.Monitor.Log($"Failed to find tilesheet {modTile.TileSheet.Id} in target map: {this.TargetMap.Id}");
@@ -241,10 +274,10 @@ namespace TotalBathhouseOverhaul
             return newTile;
         }
 
-        private TileSheet GetTilesheetByID(Map map, string Id)
+        private TileSheet GetTilesheetByID(Map map, string uniqueId)
         {
             return this.TargetMap.TileSheets
-                .Where(s => s.Id == Id)
+                .Where(s => s.Id == uniqueId)
                 .First();
         }
 
