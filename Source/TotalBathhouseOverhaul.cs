@@ -180,16 +180,41 @@ namespace TotalBathhouseOverhaul
 
             Map sennaMap = this.Helper.Content.Load<Map>(Path.Combine(AssetsRoot, "SennaRoom.tbin"));
             GameLocation sennaRoom = new GameLocation(sennaMap, SennaRoomLocationName) { IsOutdoors = false, IsFarm = false };
-            PatchDoors(sennaRoom, Game1.mouseCursors, new Rectangle(512, 144, 16, 48));
+
+            // Load the spritesheet containing the door animations.
+            string texturePath = Path.Combine(AssetsRoot, "ztotalbathhouseoverhaul_tiles.png");
+            Texture2D textureForDoors = this.Helper.Content.Load<Texture2D>(texturePath);
+
+            // If the door moves in the sprite sheet, change this number to the new tile ID.
+            int topOfFirstDoorTileIndex = 293;
+            Point doorTop = GetTilePositionOnTileSheet(textureForDoors, topOfFirstDoorTileIndex);
+            Rectangle sourceRect = new Rectangle(doorTop.X, doorTop.Y, 16, 48);
+
+            // Replace the door animation sprites with our own.
+            PatchDoors(sennaRoom, textureForDoors, sourceRect);
+
             Game1.locations.Add(sennaRoom);
+        }
+
+        private static Point GetTilePositionOnTileSheet(Texture2D texture, int tileIndex)
+        {
+            const int tileSize = 16;
+            int tilesPerRow = texture.Width / tileSize;
+            int tileRow = (tileIndex % tilesPerRow) * tileSize;
+            int tileColumn = (tileIndex / tilesPerRow) * tileSize;
+            return new Point(tileRow, tileColumn);
         }
 
         // The game has hard-coded tile indices for the doors and uses those to determine which animation to use.
         // To avoid having to have our doors at the same index we just overwrite the animation it makes with our own.
-        private void PatchDoors(GameLocation location, Texture2D animationSheet, Rectangle sourceRect)
+        private void PatchDoors(GameLocation location, Texture2D animationSheet, Rectangle sourceRect, bool flipped = false)
         {
-            TemporaryAnimatedSprite GetDoorAnimation(Point tilePoint, bool flipped)
+            TemporaryAnimatedSprite GetDoorAnimation(Point tilePoint)
             {
+                // Defaults for the regular door animation.
+                animationSheet = animationSheet ?? Game1.mouseCursors;
+                sourceRect = sourceRect != Rectangle.Empty ? sourceRect : new Rectangle(512, 144, 16, 48);
+
                 // This is based on GameLocation::loadLights().
                 Vector2 tilePosition = Utility.PointToVector2(tilePoint);
                 Vector2 position = new Vector2(tilePosition.X, (tilePosition.Y - 2)) * (float)Game1.tileSize;
@@ -224,8 +249,7 @@ namespace TotalBathhouseOverhaul
             var newDoorSprites = new Dictionary<Point, TemporaryAnimatedSprite>();
             foreach (var pair in location.doorSprites)
             {
-                // TODO: find a way to determine if they're flipped.
-                newDoorSprites.Add(pair.Key, GetDoorAnimation(pair.Key, false));
+                newDoorSprites.Add(pair.Key, GetDoorAnimation(pair.Key));
             }
             location.doorSprites = newDoorSprites;
         }
