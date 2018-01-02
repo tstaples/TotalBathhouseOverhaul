@@ -5,15 +5,15 @@ using System.IO;
 using xTile;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-using xTile.Tiles;
-using System.Linq;
-using xTile.Dimensions;
+using Microsoft.Xna.Framework;
+using System.Collections.Generic;
 
 namespace TotalBathhouseOverhaul
 {
     public class TotalBathhouseOverhaul : Mod
     {
         public const string BathhouseLocationName = "TotalBathhouseOverhaul";
+        public const string SennaRoomLocationName = "SennaRoom";
 
         // Asset paths.
         public const string AssetsRoot = "Assets";
@@ -104,7 +104,7 @@ namespace TotalBathhouseOverhaul
         private void SaveEvents_AfterSave(object sender, EventArgs e)
         {
             // Add the location back once saving is finished.
-            LoadBathhouseMap();
+            LoadCustomLocations();
         }
 
         private void SaveEvents_BeforeSave(object sender, EventArgs e)
@@ -115,7 +115,7 @@ namespace TotalBathhouseOverhaul
 
         private void SaveEvents_AfterLoad(object sender, System.EventArgs e)
         {
-            LoadBathhouseMap();
+            LoadCustomLocations();
 
             string vanillaPath = Path.Combine(AssetsRoot, "Railroad_Original.tbin");
             string modifiedPath = Path.Combine(AssetsRoot, "Railroad.tbin");
@@ -136,6 +136,12 @@ namespace TotalBathhouseOverhaul
             }
         }
 
+        private void LoadCustomLocations()
+        {
+            LoadBathhouseMap();
+            LoadSennaRoom();
+        }
+
         private void LoadBathhouseMap()
         {
             //if for whatever reason this exists already, abort. There's a problem.
@@ -145,7 +151,8 @@ namespace TotalBathhouseOverhaul
             //load in the TBO sweet sweet tbin
             Map map = this.Helper.Content.Load<Map>(BathhouseLocationFilename);
 
-            //ento's hax require some custom manipulation of the always-front later
+            // The TBin contains fog on the AlwaysFront Layer, but we're adding our own in so just remove this layer.
+            // This can be removed once the fog is taken out of that layer.
             if (map.Layers.Contains(map.GetLayer("AlwaysFront")))
                 map.RemoveLayer(map.GetLayer("AlwaysFront"));
 
@@ -153,27 +160,74 @@ namespace TotalBathhouseOverhaul
 
             // add the new location
             GameLocation location = new CustomBathhouse(map, BathhouseLocationName, steamTexture) { IsOutdoors = false, IsFarm = false };
-
-            Game1.locations.Add(location);
-
-            // TODO: cleanup location adding.
-            Map sennaMap = this.Helper.Content.Load<Map>(Path.Combine(AssetsRoot, "SennaRoom.tbin"));
-            GameLocation sennasRoom = new GameLocation(sennaMap, "SennaRoom");
-            Game1.locations.Add(sennasRoom);
-
-            //apparently this does things
-            if (location.map.Properties.ContainsKey("DayTiles"))
-                location.map.Properties.Remove("DayTiles");
-
-            //apparently this does things too.
-            if (location.map.Properties.ContainsKey("NightTiles"))
-                location.map.Properties.Remove("NightTiles");
-
-            //from Ento, no clue why this works. My life is a mess.
             location.map = map;
 
-            //more ento hax
+            // Removing these and turning on ignoreLights ensures teh entire map is always fully lit.
+            // Currently this has no affect since there's no lighting in the map anyway.
+            if (location.map.Properties.ContainsKey("DayTiles"))
+                location.map.Properties.Remove("DayTiles");
+            if (location.map.Properties.ContainsKey("NightTiles"))
+                location.map.Properties.Remove("NightTiles");
             location.ignoreLights = true;
+
+            Game1.locations.Add(location);
+        }
+
+        private void LoadSennaRoom()
+        {
+            if (Game1.getLocationFromName(SennaRoomLocationName) != null)
+                return;
+
+            Map sennaMap = this.Helper.Content.Load<Map>(Path.Combine(AssetsRoot, "SennaRoom.tbin"));
+            GameLocation sennaRoom = new GameLocation(sennaMap, SennaRoomLocationName) { IsOutdoors = false, IsFarm = false };
+            PatchDoors(sennaRoom, Game1.mouseCursors, new Rectangle(512, 144, 16, 48));
+            Game1.locations.Add(sennaRoom);
+        }
+
+        // The game has hard-coded tile indices for the doors and uses those to determine which animation to use.
+        // To avoid having to have our doors at the same index we just overwrite the animation it makes with our own.
+        private void PatchDoors(GameLocation location, Texture2D animationSheet, Rectangle sourceRect)
+        {
+            TemporaryAnimatedSprite GetDoorAnimation(Point tilePoint, bool flipped)
+            {
+                // This is based on GameLocation::loadLights().
+                Vector2 tilePosition = Utility.PointToVector2(tilePoint);
+                Vector2 position = new Vector2(tilePosition.X, (tilePosition.Y - 2)) * (float)Game1.tileSize;
+                float layerDepth = (float)((tilePosition.Y + 1) * Game1.tileSize - Game1.pixelZoom * 3) / 10000f;
+
+                var animatedSprite = new TemporaryAnimatedSprite(
+                    texture: animationSheet,
+                    sourceRect: sourceRect,
+                    animationInterval: 100f,
+                    animationLength: 4,
+                    numberOfLoops: 1,
+                    position: position,
+                    flicker: false,
+                    flipped: flipped,
+                    layerDepth: layerDepth,
+                    alphaFade: 0f,
+                    color: Color.White,
+                    scale: (float)Game1.pixelZoom,
+                    scaleChange: 0f,
+                    rotation: 0f,
+                    rotationChange: 0f)
+                {
+                    holdLastFrame = true,
+                    paused = true,
+                    endSound = null
+                };
+
+                return animatedSprite;
+            }
+
+            // Replace the door sprites with our own.
+            var newDoorSprites = new Dictionary<Point, TemporaryAnimatedSprite>();
+            foreach (var pair in location.doorSprites)
+            {
+                // TODO: find a way to determine if they're flipped.
+                newDoorSprites.Add(pair.Key, GetDoorAnimation(pair.Key, false));
+            }
+            location.doorSprites = newDoorSprites;
         }
     }
 }
