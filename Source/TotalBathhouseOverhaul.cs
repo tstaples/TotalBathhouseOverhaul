@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 
 using MSRectangle = Microsoft.Xna.Framework.Rectangle;
+using System.Linq;
 
 namespace TotalBathhouseOverhaul
 {
@@ -135,12 +136,22 @@ namespace TotalBathhouseOverhaul
         {
             LoadCustomLocations();
 
+            const string TileSheetId = "zpathtotalbathhouseoverhaulexterior";
             string vanillaPath = Path.Combine(AssetsRoot, "Railroad_Original.tbin");
             string modifiedPath = Path.Combine(AssetsRoot, "Railroad.tbin");
 
-            if (this.MapEditor.Init("RailRoad", vanillaPath, modifiedPath, new BathHouseTileSheetResolver()))
+            SeasonalTileSheetGroup tileSheetGroup = new SeasonalTileSheetGroup()
             {
-                this.MapEditor.Patch(AssetsRoot);
+                UniqueId = TileSheetId,
+                TileSheetPaths = Enum.GetValues(typeof(Season))
+                .Cast<Season>()
+                .Select(s => new KeyValuePair<Season, string>(s, Path.Combine(AssetsRoot, $"{TileSheetId}_{s.ToString().ToLower()}.png")))
+                .ToDictionary(k => k.Key, v => v.Value)
+            };
+
+            if (this.MapEditor.Init("RailRoad", vanillaPath, modifiedPath, new TileSheetProvider(tileSheetGroup)))
+            {
+                this.MapEditor.Patch();
             }
         }
 

@@ -15,4 +15,25 @@
         string GetTileSheetIdForSeason(string uniqueId, string season);
         string GetTileSheetPathForSeason(string uniqueId, string season);
     }
+
+    internal interface ITileSheetGroup
+    {
+        // Unique identifier for this tilesheet. This is used as the tilesheet name.
+        string UniqueId { get; }
+
+        // The size of your tilesheet image (number of columns, number of rows).
+        xTile.Dimensions.Size SheetSize { get; }
+        // should always be 16x16 for maps
+        xTile.Dimensions.Size TileSize { get; }
+
+        string GetTileSheetForSeason(string season);
+        string GetTileSheetPathForSeason(string season);
+    }
+
+    internal interface ITileSheetProvider
+    {
+        ITileSheetGroup[] TileSheetGroups { get; }
+
+        ITileSheetGroup GetTileSheetGroupById(string uniqueId);
+    }
 }

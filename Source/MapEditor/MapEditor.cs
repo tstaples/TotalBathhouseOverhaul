@@ -20,7 +20,7 @@ namespace TotalBathhouseOverhaul
         private Map TargetMap;
         private GameLocation TargetLocation;
 
-        private ITileSheetResolver TileSheetResolver;
+        private ITileSheetProvider TileSheetProvider;
 
         private IModHelper Helper;
         private IMonitor Monitor;
@@ -33,7 +33,7 @@ namespace TotalBathhouseOverhaul
             this.Monitor = monitor;
         }
 
-        public bool Init(string locationName, string vanillaMapPath, string modifiedMapPath, ITileSheetResolver tileSheetResolver)
+        public bool Init(string locationName, string vanillaMapPath, string modifiedMapPath, ITileSheetProvider tileSheetProvider)
         {
             try
             {
@@ -41,7 +41,7 @@ namespace TotalBathhouseOverhaul
                 this.ModifiedMap = Helper.Content.Load<Map>(modifiedMapPath);
                 this.TargetLocation = Game1.getLocationFromName(locationName);
                 this.TargetMap = this.TargetLocation.map;
-                this.TileSheetResolver = tileSheetResolver;
+                this.TileSheetProvider = tileSheetProvider;
             }
             catch (Exception ex)
             {
@@ -52,7 +52,7 @@ namespace TotalBathhouseOverhaul
             return true;
         }
 
-        public void Patch(string tilsheetRoot, string[] layersToModify)
+        public void Patch(string[] layersToModify)
         {
             Debug.Assert(this.Initialized);
 
@@ -70,11 +70,11 @@ namespace TotalBathhouseOverhaul
 
             try
             {
-                AddMissingTilesheets(tilsheetRoot);
+                AddMissingTilesheets();
             }
             catch (Exception ex)
             {
-                this.Monitor.Log($"Error adding missing tilesheets to {this.TargetMap?.Id} from root {tilsheetRoot}: {ex}");
+                this.Monitor.Log($"Error adding missing tilesheets to {this.TargetMap?.Id}: {ex}");
                 return;
             }
 
@@ -89,26 +89,26 @@ namespace TotalBathhouseOverhaul
             }
         }
 
-        public void Patch(string tilsheetRoot)
+        public void Patch()
         {
             Debug.Assert(this.Initialized);
 
             string[] layers = this.TargetMap.Layers
                 .Select(l => l.Id)
                 .ToArray();
-            Patch(tilsheetRoot, layers);
+            Patch(layers);
         }
 
         public void SeasonChanged(string newSeason)
         {
             Debug.Assert(this.Initialized);
 
-            foreach (var sheetId in this.TileSheetResolver.GetUniqueIdsForSeasonalTileSheets())
+            foreach (ITileSheetGroup tileSheetData in this.TileSheetProvider.TileSheetGroups)
             {
-                TileSheet tileSheet = this.TargetMap.GetTileSheet(sheetId);
+                TileSheet tileSheet = this.TargetMap.GetTileSheet(tileSheetData.UniqueId);
                 if (tileSheet != null)
                 {
-                    string imageSource = this.TileSheetResolver.GetTileSheetPathForSeason(sheetId, newSeason);
+                    string imageSource = tileSheetData.GetTileSheetPathForSeason(newSeason);
                     try
                     {
                         // Load the image so it's in the cache.
@@ -135,29 +135,52 @@ namespace TotalBathhouseOverhaul
         }
 
         // Add any tilesheets that the modified map has to the target map.
-        private void AddMissingTilesheets(string tilsheetRoot)
+        private void AddMissingTilesheets()
         {
-            foreach (var sheet in this.ModifiedMap.TileSheets)
+            foreach (ITileSheetGroup tileSheetData in this.TileSheetProvider.TileSheetGroups)
             {
-                // Check if it has a sheet with the same name.
-                bool targetHasSheet = this.TargetMap.TileSheets.Count(s => s.Id == sheet.Id) > 0;
-                if (!targetHasSheet)
+                // If the sheet size isn't set then loop for it in the tilesheet.
+                // TODO: find a nicer way to do this.
+                Size sheetSize = tileSheetData.SheetSize;
+                if (sheetSize.Area == 0)
                 {
-                    // We might need to store this unique id -> sheet mapping so we know which sheets are custom.
-                    string tileSheetId = this.TileSheetResolver.GetUniqueIdForTileSheet(sheet.Id); // Convert "sheet_spring" to say "sheet"
-                    string tileSheetPath = this.TileSheetResolver.GetTileSheetPathForSeason(tileSheetId, Game1.currentSeason);
-                    TileSheet ts = new TileSheet(
-                       id: tileSheetId,
-                       //id: sheet.Id, // a unique ID for the tilesheet
-                       map: this.TargetMap,
-                       imageSource: this.Helper.Content.GetActualAssetKey(tileSheetPath),
-                       sheetSize: sheet.SheetSize, // the size of your tilesheet image (number of columns, number of rows).
-                       tileSize: sheet.TileSize // should always be 16x16 for maps
-                    );
-
-                    this.TargetMap.AddTileSheet(ts);
+                    var tileSheet = this.ModifiedMap.TileSheets.First(p => p.Id == tileSheetData.UniqueId);
+                    sheetSize = tileSheet.SheetSize;
                 }
+
+                string tileSheetPath = tileSheetData.GetTileSheetPathForSeason(Game1.currentSeason);
+                TileSheet ts = new TileSheet(
+                   id: tileSheetData.UniqueId,
+                   map: this.TargetMap,
+                   imageSource: this.Helper.Content.GetActualAssetKey(tileSheetPath),
+                   sheetSize: sheetSize, // the size of your tilesheet image (number of columns, number of rows).
+                   tileSize: tileSheetData.TileSize // should always be 16x16 for maps
+                );
+
+                this.TargetMap.AddTileSheet(ts);
             }
+
+            //foreach (var sheet in this.ModifiedMap.TileSheets)
+            //{
+            //    // Check if it has a sheet with the same name.
+            //    bool targetHasSheet = this.TargetMap.TileSheets.Count(s => s.Id == sheet.Id) > 0;
+            //    if (!targetHasSheet)
+            //    {
+            //        // We might need to store this unique id -> sheet mapping so we know which sheets are custom.
+            //        string tileSheetId = this.TileSheetResolver.GetUniqueIdForTileSheet(sheet.Id); // Convert "sheet_spring" to say "sheet"
+            //        string tileSheetPath = this.TileSheetResolver.GetTileSheetPathForSeason(tileSheetId, Game1.currentSeason);
+            //        TileSheet ts = new TileSheet(
+            //           id: tileSheetId,
+            //           //id: sheet.Id, // a unique ID for the tilesheet
+            //           map: this.TargetMap,
+            //           imageSource: this.Helper.Content.GetActualAssetKey(tileSheetPath),
+            //           sheetSize: sheet.SheetSize, // the size of your tilesheet image (number of columns, number of rows).
+            //           tileSize: sheet.TileSize // should always be 16x16 for maps
+            //        );
+
+            //        this.TargetMap.AddTileSheet(ts);
+            //    }
+            //}
             this.TargetMap.LoadTileSheets(Game1.mapDisplayDevice);
         }
 
@@ -196,9 +219,11 @@ namespace TotalBathhouseOverhaul
                     Tile newTile = targetTile;
                     if (vanillaTile == null || AreTileSpritesDifferent(modTile, vanillaTile))
                     {
-                        // Find the tilesheet with a matching ID
-                        string uniqueTileSheetId = this.TileSheetResolver.GetUniqueIdForTileSheet(modTile.TileSheet.Id);
-                        TileSheet tileSheet = GetTilesheetByID(this.TargetMap, uniqueTileSheetId);
+                        // Find the tilesheet with a matching ID.
+                        // If the tileSheetGroup is null then the sheet is likely a default one.
+                        ITileSheetGroup tileSheetGroup = this.TileSheetProvider.GetTileSheetGroupById(modTile.TileSheet.Id);
+                        string tileSheetId = tileSheetGroup?.UniqueId ?? modTile.TileSheet.Id;
+                        TileSheet tileSheet = GetTilesheetByID(this.TargetMap, tileSheetId);
                         if (tileSheet == null)
                         {
                             this.Monitor.Log($"Failed to find tilesheet {modTile.TileSheet.Id} in target map: {this.TargetMap.Id}");
